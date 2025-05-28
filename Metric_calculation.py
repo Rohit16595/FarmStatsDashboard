@@ -158,14 +158,19 @@ def user_dashboard():
         if i < 4:  # Only show first 3 types in this row
             cols[i].metric(f"{dev_type} Devices", count, help=f"Total {dev_type} type devices")
     
-    # Disconnected devices row
+   # Disconnected devices row
     cols = st.columns(4)
     cols[0].metric("Disconnected Devices", metrics["disconnected_devices"], help="Total disconnected devices")
     
-    # Disconnected type counts
-    for i, (dev_type, count) in enumerate(metrics.get("disconnected_type_counts", {}).items(), 1):
-        if i < 4:  # Only show first 3 types in this row
-            cols[i].metric(f"Disconnected {dev_type}", count, help=f"Disconnected {dev_type} type devices")
+    # Define desired order
+    desired_order = ["C", "B", "A"]
+    disconnected_types = metrics.get("disconnected_type_counts", {})
+    
+    # Display in desired order
+    for i, dev_type in enumerate(desired_order, 1):
+        if dev_type in disconnected_types and i < 4:
+            cols[i].metric(f"Disconnected {dev_type}", disconnected_types[dev_type], help=f"Disconnected {dev_type} type devices")
+
 
     # Gateway Statistics Section
     st.subheader("📊 Gateway Statistics")
