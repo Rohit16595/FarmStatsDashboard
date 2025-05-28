@@ -46,7 +46,7 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
     disconnected_list = filtered_disconnected[["deviceid", "tag_number"]].dropna().drop_duplicates().values.tolist()
 
     # Calculate device type counts
-    device_type_counts = filtered_disconnected["Device_type"].value_counts().to_dict()
+    device_type_counts = disconnected["Device_type"].value_counts().to_dict()
     disconnected_type_counts = filtered_disconnected["Device_type"].value_counts().to_dict()
     
     gateway_devices = filtered_device.groupby("gatewayid")["deviceid"].apply(set).to_dict()
