@@ -144,7 +144,7 @@ def user_dashboard():
     date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
     selected_date = st.selectbox("Select Date", [d.strftime("%d-%m-%Y") for d in date_list])
 
-    metrics = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
+    metric = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
 
     # Device Statistics Section
     st.subheader("📊 Device Statistics")
