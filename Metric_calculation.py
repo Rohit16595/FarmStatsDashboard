@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 from auth import load_users, save_users, hash_password
 from datetime import datetime, timedelta
-from streamlit_option_menu import option_menu
 import matplotlib.pyplot as plt
+import plotly.express as px
 
 def format_date(dt):
     return dt.strftime("%d-%m-%Y")
@@ -45,6 +45,10 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
     gateway_count = filtered_device["gatewayid"].nunique()
     disconnected_list = filtered_disconnected[["deviceid", "tag_number"]].dropna().drop_duplicates().values.tolist()
 
+    # Calculate device type counts
+    device_type_counts = filtered_device["Device_type"].value_counts().to_dict()
+    disconnected_type_counts = filtered_disconnected["Device_type"].value_counts().to_dict()
+    
     gateway_devices = filtered_device.groupby("gatewayid")["deviceid"].apply(set).to_dict()
     disconnected_set = set(filtered_disconnected["deviceid"])
     gateway_issues = [g for g, devs in gateway_devices.items() if devs.issubset(disconnected_set)]
@@ -59,6 +63,9 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
         "gateway_count": gateway_count,
         "disconnected_list": disconnected_list,
         "disconnected_gateway_count": gateway_issue_count,
+        "device_type_counts": device_type_counts,
+        "disconnected_type_counts": disconnected_type_counts,
+        "gateway_issues_list": gateway_issues
     }
 
 def get_trend_data(disconnected_df, device_df, master_df, selected_cluster, selected_farm, selected_device_type, period_days):
@@ -96,19 +103,22 @@ def get_trend_data(disconnected_df, device_df, master_df, selected_cluster, sele
     return device_trend, gateway_trend
 
 def plot_trends(device_df, gateway_df):
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-
-    ax1.plot(device_df["entry_date"], device_df["Disconnected Devices"], marker="o")
-    ax1.set_title("Device Disconnection Trend")
-    ax1.set_xlabel("Date")
-    ax1.set_ylabel("Devices")
-
-    ax2.plot(gateway_df["entry_date"], gateway_df["Disconnected Gateways"], marker="o", color="red")
-    ax2.set_title("Gateway Disconnection Trend")
-    ax2.set_xlabel("Date")
-    ax2.set_ylabel("Gateways")
-
-    st.pyplot(fig)
+    # Use Plotly for interactive plots
+    fig1 = px.line(device_df, x="entry_date", y="Disconnected Devices", 
+                  title="Device Disconnection Trend",
+                  labels={"entry_date": "Date", "Disconnected Devices": "Devices"})
+    fig1.update_traces(mode="markers+lines")
+    fig1.update_layout(hovermode="x unified")
+    
+    fig2 = px.line(gateway_df, x="entry_date", y="Disconnected Gateways", 
+                  title="Gateway Disconnection Trend",
+                  labels={"entry_date": "Date", "Disconnected Gateways": "Gateways"},
+                  color_discrete_sequence=["red"])
+    fig2.update_traces(mode="markers+lines")
+    fig2.update_layout(hovermode="x unified")
+    
+    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True)
 
 def user_dashboard():
     st.title("User Dashboard")
@@ -128,17 +138,40 @@ def user_dashboard():
 
     metrics = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
 
-    st.subheader("📊 Key Metrics")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Farms", metrics["farm_count"])
-    col2.metric("Total Devices", metrics["total_devices"])
-    col3.metric("Disconnected Devices", metrics["disconnected_devices"])
-    col4.metric("Gateways", metrics["gateway_count"])
+    # Device Statistics Section
+    st.subheader("📊 Device Statistics")
+    
+    # Total devices row
+    cols = st.columns(4)
+    cols[0].metric("Total Devices", metrics["total_devices"], help="Total number of devices")
+    
+    # Device type counts
+    for i, (dev_type, count) in enumerate(metrics.get("device_type_counts", {}).items(), 1):
+        if i < 4:  # Only show first 3 types in this row
+            cols[i].metric(f"{dev_type} Devices", count, help=f"Total {dev_type} type devices")
+    
+    # Disconnected devices row
+    cols = st.columns(4)
+    cols[0].metric("Disconnected Devices", metrics["disconnected_devices"], help="Total disconnected devices")
+    
+    # Disconnected type counts
+    for i, (dev_type, count) in enumerate(metrics.get("disconnected_type_counts", {}).items(), 1):
+        if i < 4:  # Only show first 3 types in this row
+            cols[i].metric(f"Disconnected {dev_type}", count, help=f"Disconnected {dev_type} type devices")
 
-    col5, col6 = st.columns(2)
-    col5.metric("Disconnected Gateways", metrics["disconnected_gateway_count"])
-    col6.metric("Gateway Issue", metrics["gateway_issue"])
+    # Gateway Statistics Section
+    st.subheader("📊 Gateway Statistics")
+    cols = st.columns(3)
+    cols[0].metric("Total Gateways", metrics["gateway_count"], help="Total number of gateways")
+    cols[1].metric("Disconnected Gateways", metrics["disconnected_gateway_count"], help="Gateways with all devices disconnected")
+    
+    # Gateway issue status with color
+    if metrics["gateway_issue"] == "Yes":
+        cols[2].markdown(f'<p style="font-size:20px;color:red">Gateway Issue: {metrics["gateway_issue"]}</p>', unsafe_allow_html=True)
+    else:
+        cols[2].markdown(f'<p style="font-size:20px;color:black">Gateway Issue: {metrics["gateway_issue"]}</p>', unsafe_allow_html=True)
 
+    # Disconnected Devices List
     st.subheader("📋 Disconnected Devices List")
     if metrics["disconnected_list"]:
         df = pd.DataFrame(metrics["disconnected_list"], columns=["Device ID", "Tag Number"])
@@ -146,7 +179,10 @@ def user_dashboard():
     else:
         st.info("No disconnected devices found.")
 
-    st.subheader("📉 Disconnection Trends")
+    # Trend Analysis Section
+    st.subheader("📉 Trend Analysis")
+    
+    # Filters for trends
     period_map = {
         "7 days": 7,
         "1 month": 30,
@@ -154,11 +190,18 @@ def user_dashboard():
         "6 months": 180,
         "1 year": 365
     }
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_period = st.selectbox("Trend Duration", list(period_map.keys()))
+    with col2:
+        selected_device_type = st.selectbox("Device Type", ["All"] + sorted(disconnected_df["Device_type"].dropna().unique().tolist()))
 
-    selected_period = st.selectbox("Trend Duration", list(period_map.keys()))
-    selected_device_type = st.selectbox("Device Type", ["All"] + sorted(disconnected_df["Device_type"].dropna().unique().tolist()))
-
-    device_trend, gateway_trend = get_trend_data(disconnected_df, device_df, master_df, selected_cluster, selected_farm, selected_device_type, period_map[selected_period])
+    device_trend, gateway_trend = get_trend_data(
+        disconnected_df, device_df, master_df, 
+        selected_cluster, selected_farm, 
+        selected_device_type, period_map[selected_period]
+    )
 
     if not device_trend.empty or not gateway_trend.empty:
         plot_trends(device_trend, gateway_trend)
@@ -166,17 +209,13 @@ def user_dashboard():
         st.info("No trend data available.")
 
 def admin_dashboard():
-    selected = option_menu(
-        menu_title=None,
-        options=["User Dashboard", "Admin Panel"],
-        icons=["graph-up", "tools"],
-        menu_icon="cast",
-        default_index=0,
-        orientation="horizontal"
-    )
-    if selected == "User Dashboard":
+    # Create tabs for navigation
+    tab1, tab2 = st.tabs(["User Dashboard", "Admin Panel"])
+    
+    with tab1:
         user_dashboard()
-    else:
+    
+    with tab2:
         admin_panel()
 
 def admin_panel():
