@@ -160,12 +160,12 @@ def user_dashboard():
             cols[i].metric(f"{dev_type} Devices", count, help=f"Total {dev_type} type devices")
     
   # Disconnected devices row
-cols = st.columns(4)
-cols[0].metric("Disconnected Devices", metrics["disconnected_devices"], help="Total disconnected devices")
+    cols = st.columns(4)
+    cols[0].metric("Disconnected Devices", metrics["disconnected_devices"], help="Total disconnected devices")
 
-# Fixed order: C → B → A
-disconnected_types = metrics.get("disconnected_type_counts", {})
-desired_order = ["C", "B", "A"]
+    # Fixed order: C → B → A
+    disconnected_types = metrics.get("disconnected_type_counts", {})
+    desired_order = ["C", "B", "A"]
 
 for idx, dev_type in enumerate(desired_order):
     count = disconnected_types.get(dev_type)
