@@ -45,17 +45,17 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
     gateway_count = filtered_device["gatewayid"].nunique()
     disconnected_list = filtered_disconnected[["deviceid", "tag_number"]].dropna().drop_duplicates().values.tolist()
     
-# Device type count (all entries on date, ignore data_quality)
-all_devices_on_date = disconnected_df[
-    disconnected_df["entry_date"].dt.date == pd.to_datetime(selected_date, format="%d-%m-%Y").date()
-]
-if selected_cluster != "All":
-    all_devices_on_date = all_devices_on_date[all_devices_on_date["Cluster"] == selected_cluster]
-if selected_farm != "All":
-    all_devices_on_date = all_devices_on_date[all_devices_on_date["farm_name"] == selected_farm]
-
-device_type_counts = all_devices_on_date["Device_type"].value_counts().to_dict()
-disconnected_type_counts = filtered_disconnected["Device_type"].value_counts().to_dict()
+    # Device type count (all entries on date, ignore data_quality)
+    all_devices_on_date = disconnected_df[
+        disconnected_df["entry_date"].dt.date == pd.to_datetime(selected_date, format="%d-%m-%Y").date()
+    ]
+    if selected_cluster != "All":
+        all_devices_on_date = all_devices_on_date[all_devices_on_date["Cluster"] == selected_cluster]
+    if selected_farm != "All":
+        all_devices_on_date = all_devices_on_date[all_devices_on_date["farm_name"] == selected_farm]
+    
+    device_type_counts = all_devices_on_date["Device_type"].value_counts().to_dict()
+    disconnected_type_counts = filtered_disconnected["Device_type"].value_counts().to_dict()
     
     gateway_devices = filtered_device.groupby("gatewayid")["deviceid"].apply(set).to_dict()
     disconnected_set = set(filtered_disconnected["deviceid"])
