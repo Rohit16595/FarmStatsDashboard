@@ -56,18 +56,18 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
     
     device_type_counts = all_devices_on_date["Device_type"].value_counts().to_dict()
     # Normalize Device_type values and map to A/B/C
-disconnected_type_normalized = (
-    filtered_disconnected["Device_type"]
-    .str.strip()
-    .str.upper()
-    .replace({"A TYPE": "A", "B TYPE": "B", "C TYPE": "C"})
-)
-disconnected_type_counts_series = disconnected_type_normalized.value_counts()
-disconnected_type_counts = disconnected_type_counts_series.to_dict()
-
-# Ensure all expected types are present
-for t in ["C", "B", "A"]:
-    disconnected_type_counts.setdefault(t, 0)
+    disconnected_type_normalized = (
+        filtered_disconnected["Device_type"]
+        .str.strip()
+        .str.upper()
+        .replace({"A TYPE": "A", "B TYPE": "B", "C TYPE": "C"})
+    )
+    disconnected_type_counts_series = disconnected_type_normalized.value_counts()
+    disconnected_type_counts = disconnected_type_counts_series.to_dict()
+    
+    # Ensure all expected types are present
+    for t in ["C", "B", "A"]:
+        disconnected_type_counts.setdefault(t, 0)
 
     
     gateway_devices = filtered_device.groupby("gatewayid")["deviceid"].apply(set).to_dict()
