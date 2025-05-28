@@ -162,15 +162,14 @@ def user_dashboard():
     cols = st.columns(4)
     cols[0].metric("Disconnected Devices", metrics["disconnected_devices"], help="Total disconnected devices")
     
-    # Define desired order
+    # Fixed order: C → B → A
     desired_order = ["C", "B", "A"]
     disconnected_types = metrics.get("disconnected_type_counts", {})
-    
-    # Display in desired order
-    for i, dev_type in enumerate(desired_order, 1):
-        if dev_type in disconnected_types and i < 4:
-            cols[i].metric(f"Disconnected {dev_type}", disconnected_types[dev_type], help=f"Disconnected {dev_type} type devices")
 
+for idx, dev_type in enumerate(desired_order):
+    count = disconnected_types.get(dev_type)
+    if count is not None:
+        cols[idx + 1].metric(f"Disconnected {dev_type}", count, help=f"Disconnected {dev_type} type devices")
 
     # Gateway Statistics Section
     st.subheader("📊 Gateway Statistics")
