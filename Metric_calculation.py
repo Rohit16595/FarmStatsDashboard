@@ -172,11 +172,6 @@ for idx, dev_type in enumerate(desired_order):
     if count is not None:
         cols[idx + 1].metric(f"Disconnected {dev_type}", count, help=f"Disconnected {dev_type} type devices")
 
-for idx, dev_type in enumerate(desired_order):
-    count = disconnected_types.get(dev_type)
-    if count is not None:
-        cols[idx + 1].metric(f"Disconnected {dev_type}", count, help=f"Disconnected {dev_type} type devices")
-
     # Gateway Statistics Section
     st.subheader("📊 Gateway Statistics")
     cols = st.columns(3)
