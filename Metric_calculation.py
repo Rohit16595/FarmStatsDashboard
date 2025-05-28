@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 from auth import load_users, save_users, hash_password
@@ -9,31 +8,40 @@ import matplotlib.pyplot as plt
 def format_date(dt):
     return dt.strftime("%d-%m-%Y")
 
-def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date):
-    filtered_master = master_df.copy()
-    if selected_cluster != "All":
-        filtered_master = filtered_master[filtered_master["Cluster"] == selected_cluster]
-    if selected_farm != "All":
-        filtered_master = filtered_master[filtered_master["farm_name"] == selected_farm]
+def preprocess_disconnected_df(disconnected_df, master_df):
+    # Parse entry_date as DD-MM-YYYY and map Cluster
+    disconnected_df["entry_date"] = pd.to_datetime(disconnected_df["entry_date"], format="%d-%m-%Y", errors="coerce")
+    cluster_map = master_df.set_index("farm_name")["Cluster"].to_dict()
+    disconnected_df["Cluster"] = disconnected_df["farm_name"].map(cluster_map)
+    return disconnected_df
 
-    filtered_disconnected = disconnected_df.copy()
-    if selected_date:
-        filtered_disconnected = filtered_disconnected[filtered_disconnected["entry_date"].dt.date == pd.to_datetime(selected_date).date()]
+def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date):
+    disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
+
+    # Filter by date and data_quality
+    filtered_disconnected = disconnected_df[
+        (disconnected_df["entry_date"].dt.date == pd.to_datetime(selected_date, format="%d-%m-%Y").date()) &
+        (disconnected_df["data_quality"] == "Disconnected")
+    ]
+
     if selected_cluster != "All":
         filtered_disconnected = filtered_disconnected[filtered_disconnected["Cluster"] == selected_cluster]
+        master_df = master_df[master_df["Cluster"] == selected_cluster]
+
     if selected_farm != "All":
         filtered_disconnected = filtered_disconnected[filtered_disconnected["farm_name"] == selected_farm]
+        master_df = master_df[master_df["farm_name"] == selected_farm]
 
     filtered_device = device_df.copy()
     if selected_farm != "All":
         filtered_device = filtered_device[filtered_device["farm_name"] == selected_farm]
     elif selected_cluster != "All":
-        farms = filtered_master["farm_name"].unique()
+        farms = master_df["farm_name"].unique()
         filtered_device = filtered_device[filtered_device["farm_name"].isin(farms)]
 
     total_devices = len(filtered_device)
     disconnected_devices = len(filtered_disconnected["deviceid"].unique())
-    total_farms = filtered_master["farm_name"].nunique()
+    total_farms = master_df["farm_name"].nunique()
     gateway_count = filtered_device["gatewayid"].nunique()
     disconnected_list = filtered_disconnected[["deviceid", "tag_number"]].dropna().drop_duplicates().values.tolist()
 
@@ -53,12 +61,15 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
         "disconnected_gateway_count": gateway_issue_count,
     }
 
-def get_trend_data(disconnected_df, device_df, selected_cluster, selected_farm, selected_device_type, period_days):
+def get_trend_data(disconnected_df, device_df, master_df, selected_cluster, selected_farm, selected_device_type, period_days):
+    disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
+
     end_date = disconnected_df["entry_date"].max().normalize()
     start_date = end_date - timedelta(days=period_days)
     trend_df = disconnected_df[
         (disconnected_df["entry_date"] >= start_date) &
-        (disconnected_df["entry_date"] <= end_date)
+        (disconnected_df["entry_date"] <= end_date) &
+        (disconnected_df["data_quality"] == "Disconnected")
     ]
 
     if selected_cluster != "All":
@@ -68,7 +79,7 @@ def get_trend_data(disconnected_df, device_df, selected_cluster, selected_farm, 
     if selected_device_type != "All":
         trend_df = trend_df[trend_df["Device_type"] == selected_device_type]
 
-    trend_device = trend_df.groupby("entry_date")["deviceid"].nunique().reset_index(name="Disconnected Devices")
+    device_trend = trend_df.groupby("entry_date")["deviceid"].nunique().reset_index(name="Disconnected Devices")
 
     gateway_issues = []
     for date in pd.date_range(start=start_date, end=end_date):
@@ -80,9 +91,9 @@ def get_trend_data(disconnected_df, device_df, selected_cluster, selected_farm, 
         gateway_devices = filtered_device.groupby("gatewayid")["deviceid"].apply(set).to_dict()
         gateway_issue_count = sum(1 for devs in gateway_devices.values() if devs.issubset(disconnected_set))
         gateway_issues.append({"entry_date": date, "Disconnected Gateways": gateway_issue_count})
-    trend_gateway = pd.DataFrame(gateway_issues)
+    gateway_trend = pd.DataFrame(gateway_issues)
 
-    return trend_device, trend_gateway
+    return device_trend, gateway_trend
 
 def plot_trends(device_df, gateway_df):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
@@ -111,8 +122,9 @@ def user_dashboard():
     farm_list = ["All"] + sorted(master_df["farm_name"].dropna().unique().tolist())
     selected_farm = st.selectbox("Select Farm", farm_list)
 
+    disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
     date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
-    selected_date = st.selectbox("Select Date", date_list)
+    selected_date = st.selectbox("Select Date", [d.strftime("%d-%m-%Y") for d in date_list])
 
     metrics = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
 
@@ -146,7 +158,7 @@ def user_dashboard():
     selected_period = st.selectbox("Trend Duration", list(period_map.keys()))
     selected_device_type = st.selectbox("Device Type", ["All"] + sorted(disconnected_df["Device_type"].dropna().unique().tolist()))
 
-    device_trend, gateway_trend = get_trend_data(disconnected_df, device_df, selected_cluster, selected_farm, selected_device_type, period_map[selected_period])
+    device_trend, gateway_trend = get_trend_data(disconnected_df, device_df, master_df, selected_cluster, selected_farm, selected_device_type, period_map[selected_period])
 
     if not device_trend.empty or not gateway_trend.empty:
         plot_trends(device_trend, gateway_trend)
@@ -169,10 +181,6 @@ def admin_dashboard():
 
 def admin_panel():
     st.title("Admin Panel")
-    master_df = st.session_state.master_df
-    device_df = st.session_state.device_df
-    disconnected_df = st.session_state.disconnected_df
-
     users = load_users()
     st.subheader("User Management")
     for username, details in users.items():
