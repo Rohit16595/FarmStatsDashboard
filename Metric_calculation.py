@@ -145,6 +145,7 @@ def user_dashboard():
     selected_date = st.selectbox("Select Date", [d.strftime("%d-%m-%Y") for d in date_list])
 
     metric = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
+    metrics = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
 
     # Device Statistics Section
     st.subheader("📊 Device Statistics")
