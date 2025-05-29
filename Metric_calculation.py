@@ -204,7 +204,7 @@ def user_dashboard():
             "Farm Status", ["All"] + sorted(master_df["farm_status"].dropna().unique()),
             key="status_select"
         )
-else:
+    else:
     st.error("No valid dates found in disconnected device file. Please check data format.")
     st.stop()
 
