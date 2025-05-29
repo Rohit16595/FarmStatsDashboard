@@ -217,7 +217,7 @@ selected_date = selected_date.strftime("%d-%m-%Y")  # Format for downstream use
     date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
 
     # Display Farm Info
-    st.markdown("### Farm Information")
+        st.markdown("### Farm Information")
     col_farm1, col_farm2, col_farm3 = st.columns(3)
     with col_farm1:
         st.text(f"Farm Name: {selected_farm}")
