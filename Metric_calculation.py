@@ -199,26 +199,26 @@ else:
     st.stop()
 
     
-     with col2:
-            selected_farm = st.selectbox(
-                "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
-                key="farm_select"
-            )
+    with col2:
+        selected_farm = st.selectbox(
+            "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
+            key="farm_select"
+        )
     
         col3, col4 = st.columns(2)
-        with col3:
-            selected_cluster = st.selectbox(
-                "Select Cluster", ["All"] + sorted(master_df["Cluster"].dropna().unique()),
-                key="cluster_select"
-            )
-        with col4:
-            selected_status = st.selectbox(
-                "Farm Status", ["All"] + sorted(master_df["farm_status"].dropna().unique()),
-                key="status_select"
-            )
-    else:
-        st.error("No valid dates found in disconnected device file. Please check data format.")
-        st.stop()
+    with col3:
+        selected_cluster = st.selectbox(
+            "Select Cluster", ["All"] + sorted(master_df["Cluster"].dropna().unique()),
+            key="cluster_select"
+        )
+    with col4:
+        selected_status = st.selectbox(
+            "Farm Status", ["All"] + sorted(master_df["farm_status"].dropna().unique()),
+            key="status_select"
+        )
+else:
+    st.error("No valid dates found in disconnected device file. Please check data format.")
+    st.stop()
 
     # Apply filter to master_df and disconnected_df
     if selected_status != "All":
