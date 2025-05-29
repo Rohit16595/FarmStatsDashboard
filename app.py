@@ -2,6 +2,35 @@ import streamlit as st
 import pandas as pd
 from auth import login_page, initialize_user_db
 from Metric_calculation import user_dashboard, admin_dashboard
+import chardet
+
+def safe_read_file(uploaded_file):
+    import io
+    import os
+
+    file_name = uploaded_file.name.lower()
+
+    try:
+        # Read the first 1,000 bytes for encoding detection
+        raw_data = uploaded_file.read()
+        result = chardet.detect(raw_data)
+        encoding = result['encoding'] or 'utf-8'
+
+        # Reset the buffer
+        uploaded_file.seek(0)
+
+        # Determine file type by extension
+        if file_name.endswith('.csv'):
+            return pd.read_csv(uploaded_file, encoding=encoding, errors='replace')
+        elif file_name.endswith(('.xls', '.xlsx')):
+            return pd.read_excel(uploaded_file)
+        else:
+            st.error("Unsupported file format. Please upload .csv, .xls, or .xlsx files.")
+            return None
+    except Exception as e:
+        st.error(f"Error reading file {uploaded_file.name}: {e}")
+        return None
+
 
 def main():
     # Initialize user database and session state
@@ -53,9 +82,9 @@ def load_data():
     uploaded_disconnected = st.file_uploader("Upload Disconnected Device Output File", type=["csv"], key="disconnected")
 
     if uploaded_master and uploaded_device_inventory and uploaded_disconnected:
-        master_df = pd.read_csv(uploaded_master)
-        device_df = pd.read_csv(uploaded_device_inventory)
-        disconnected_df = pd.read_csv(uploaded_disconnected)
+        master_df = safe_read_file(uploaded_master)
+        device_df = safe_read_file(uploaded_device_inventory)
+        disconnected_df = safe_read_file(uploaded_disconnected)
 
         # Ensure entry_date is datetime
         if "entry_date" in disconnected_df.columns:
