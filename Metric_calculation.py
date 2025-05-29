@@ -160,6 +160,17 @@ def plot_trends(device_df, gateway_df):
     st.plotly_chart(fig2, use_container_width=True)
 
 def user_dashboard():
+    # Farm status filter (BEFORE dropdowns)
+    status_list = ["All"] + sorted(master_df["farm_status"].dropna().unique())
+    selected_status = st.selectbox("Farm Status", status_list, key="status_select")
+    
+    if selected_status != "All":
+        master_df = master_df[master_df["farm_status"] == selected_status]
+    
+    # Sync device_df and disconnected_df
+    allowed_farms = master_df["farm_name"].unique()
+    device_df = device_df[device_df["farm_name"].isin(allowed_farms)]
+    disconnected_df = disconnected_df[disconnected_df["farm_name"].isin(allowed_farms)]
     st.title("User Dashboard")
     master_df = st.session_state.master_df
     device_df = st.session_state.device_df
@@ -169,13 +180,24 @@ def user_dashboard():
     disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
     date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
 
-    if date_list:
-        col1, col2 = st.columns(2)
-        with col1:
-            selected_date_obj = st.date_input(
-                "Select Date", value=max(date_list), min_value=min(date_list), max_value=max(date_list), key="date_select"
-            )
-            selected_date = selected_date_obj.strftime("%d-%m-%Y")  # Format to string
+    # After filtering master_df and disconnected_df (see issue 2 first!)
+date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique())
+
+if date_list:
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_date = st.date_input(
+            "Select Date", 
+            value=max(date_list), 
+            min_value=min(date_list), 
+            max_value=max(date_list), 
+            key="date_select"
+        )
+        selected_date = selected_date.strftime("%d-%m-%Y")
+else:
+    st.error("No valid dates found in disconnected device file. Please check data format.")
+    st.stop()
+
     
         with col2:
             selected_farm = st.selectbox(
