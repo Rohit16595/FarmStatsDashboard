@@ -286,7 +286,7 @@ def user_dashboard():
     else:
         st.info("No trend data available.")
 
-def admin_dashboard():
+def admin_dashboard(show=True):
     # Create tabs for navigation
     tab1, tab2 = st.tabs(["User Dashboard", "Admin Panel"])
     
