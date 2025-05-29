@@ -44,15 +44,23 @@ def main():
             file_upload_page()
         else:
             if st.session_state.role == "admin":
-                panel = st.sidebar.radio("Admin View", ["User Dashboard", "Admin Panel", "Upload Files"])
+                # ✅ This line must be indented INSIDE the admin role block
+                panel = st.sidebar.radio("Navigation", ["User Dashboard", "Admin Panel", "Upload Files"])
+
                 if panel == "User Dashboard":
-                    admin_dashboard(show="user")
+                    from Metric_calculation import user_dashboard
+                    user_dashboard()
+
                 elif panel == "Admin Panel":
-                    admin_dashboard(show="admin")
-                else:
+                    from Metric_calculation import admin_panel
+                    admin_panel()
+
+                elif panel == "Upload Files":
                     file_upload_page()
+
             else:
-                admin_dashboard(show="user")
+                from Metric_calculation import user_dashboard
+                user_dashboard()
     else:
         login_page()
 
