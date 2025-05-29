@@ -160,6 +160,11 @@ def plot_trends(device_df, gateway_df):
     st.plotly_chart(fig2, use_container_width=True)
 
 def user_dashboard():
+    # Load session state data
+    master_df = st.session_state.master_df
+    device_df = st.session_state.device_df
+    disconnected_df = st.session_state.disconnected_df
+
     # Farm status filter (BEFORE dropdowns)
     status_list = ["All"] + sorted(master_df["farm_status"].dropna().unique())
     selected_status = st.selectbox("Farm Status", status_list, key="status_select")
@@ -171,51 +176,45 @@ def user_dashboard():
     allowed_farms = master_df["farm_name"].unique()
     device_df = device_df[device_df["farm_name"].isin(allowed_farms)]
     disconnected_df = disconnected_df[disconnected_df["farm_name"].isin(allowed_farms)]
+
     st.title("User Dashboard")
-    master_df = st.session_state.master_df
-    device_df = st.session_state.device_df
-    disconnected_df = st.session_state.disconnected_df
 
     # Preprocess for date list
     disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
     date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
 
     # After filtering master_df and disconnected_df (see issue 2 first!)
-date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique())
+    date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique())
 
-if date_list:
-    col1, col2 = st.columns(2)
-    with col1:
-        selected_date = st.date_input(
-            "Select Date", 
-            value=max(date_list), 
-            min_value=min(date_list), 
-            max_value=max(date_list), 
-            key="date_select"
-        )
-        selected_date = selected_date.strftime("%d-%m-%Y")
-else:
-    st.error("No valid dates found in disconnected device file. Please check data format.")
-    st.stop()
+    if date_list:
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_date = st.date_input(
+                "Select Date", 
+                value=max(date_list), 
+                min_value=min(date_list), 
+                max_value=max(date_list), 
+                key="date_select"
+            )
+            selected_date = selected_date.strftime("%d-%m-%Y")
 
-    
-    with col2:
-        selected_farm = st.selectbox(
-            "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
-            key="farm_select"
-        )
-    
+        with col2:
+            selected_farm = st.selectbox(
+                "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
+                key="farm_select"
+            )
+
         col3, col4 = st.columns(2)
-    with col3:
-        selected_cluster = st.selectbox(
-            "Select Cluster", ["All"] + sorted(master_df["Cluster"].dropna().unique()),
-            key="cluster_select"
-        )
-    with col4:
-        selected_status = st.selectbox(
-            "Farm Status", ["All"] + sorted(master_df["farm_status"].dropna().unique()),
-            key="status_select"
-        )
+        with col3:
+            selected_cluster = st.selectbox(
+                "Select Cluster", ["All"] + sorted(master_df["Cluster"].dropna().unique()),
+                key="cluster_select"
+            )
+        with col4:
+            selected_status = st.selectbox(
+                "Farm Status", ["All"] + sorted(master_df["farm_status"].dropna().unique()),
+                key="status_select"
+            )
     else:
         st.error("No valid dates found in disconnected device file. Please check data format.")
         st.stop()
@@ -306,6 +305,7 @@ else:
         plot_trends(device_trend, gateway_trend)
     else:
         st.info("No trend data available.")
+
 
 def admin_dashboard(show=True):
     # Create tabs for navigation
