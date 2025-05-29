@@ -163,7 +163,7 @@ def user_dashboard():
     
     # Apply filter to master_df and disconnected_df
     if selected_status != "All":
-    master_df = master_df[master_df["farm_status"] == selected_status]
+        master_df = master_df[master_df["farm_status"] == selected_status]
     disconnected_df = disconnected_df[disconnected_df["farm_name"].isin(master_df["farm_name"])]
 
     # Preprocess for date selection
