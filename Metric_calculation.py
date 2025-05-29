@@ -42,7 +42,7 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
     selected_date_obj = pd.to_datetime(selected_date, format="%d-%m-%Y").date()
     filtered_disconnected = disconnected_df[
         (disconnected_df["entry_date"].dt.date == selected_date_obj) &
-        (disconnected_df["data_quality"].str.lower().str.strip() == "disconnected")
+        (disconnected_df["data_quality"].astype(str).str.lower().str.strip() == "disconnected")
     ]
 
     # Apply farm/cluster filters to master and disconnected_df
