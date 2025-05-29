@@ -27,7 +27,6 @@ def safe_read_file(uploaded_file):
         return None
 
 def main():
-    # Initialize user database and session state
     if "authenticated" not in st.session_state:
         initialize_user_db()
         st.session_state.authenticated = False
@@ -45,19 +44,15 @@ def main():
             file_upload_page()
         else:
             if st.session_state.role == "admin":
-                # Show sidebar for toggling between dashboards
                 panel = st.sidebar.radio("Admin View", ["User Dashboard", "Admin Panel", "Upload Files"])
                 if panel == "User Dashboard":
-                    from Metric_calculation import user_dashboard
-                    user_dashboard()
+                    admin_dashboard(show="user")
                 elif panel == "Admin Panel":
-                    from Metric_calculation import admin_panel
-                    admin_panel()
+                    admin_dashboard(show="admin")
                 else:
-                    file_upload_page()  # Assuming this is your upload function
+                    file_upload_page()
             else:
-                from Metric_calculation import user_dashboard
-                user_dashboard()
+                admin_dashboard(show="user")
     else:
         login_page()
 
