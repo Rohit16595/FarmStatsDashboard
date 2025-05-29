@@ -68,13 +68,32 @@ def main():
         login_page()
 
 def file_upload_page():
-    st.title("Upload Data Files")
-    st.session_state.master_df, st.session_state.device_df, st.session_state.disconnected_df = load_data()
-    
-    if st.session_state.master_df is not None and st.session_state.device_df is not None and st.session_state.disconnected_df is not None:
-        if st.button("Proceed to Dashboard"):
+    st.title("📁 Upload Files (Admin Only)")
+
+    st.markdown("Please upload the following files to proceed:")
+
+    master_file = st.file_uploader("Upload Master File", type=["csv", "xls", "xlsx"])
+    device_file = st.file_uploader("Upload Device Inventory File", type=["csv", "xls", "xlsx"])
+    disconnected_file = st.file_uploader("Upload Disconnected Device Output File", type=["csv", "xls", "xlsx"])
+
+    if st.button("📊 Load Dashboard"):
+        if not (master_file and device_file and disconnected_file):
+            st.warning("Please upload all required files.")
+            return
+
+        master_df = safe_read_file(master_file)
+        device_df = safe_read_file(device_file)
+        disconnected_df = safe_read_file(disconnected_file)
+
+        if master_df is not None and device_df is not None and disconnected_df is not None:
+            st.session_state.master_df = master_df
+            st.session_state.device_df = device_df
+            st.session_state.disconnected_df = disconnected_df
             st.session_state.files_uploaded = True
-            st.rerun()
+            st.success("Files successfully loaded. Please proceed.")
+        else:
+            st.error("Failed to load one or more files. Please check format and try again.")
+
 
 def load_data():
     uploaded_master = st.file_uploader("Upload Master File", type=["csv"], key="master")
