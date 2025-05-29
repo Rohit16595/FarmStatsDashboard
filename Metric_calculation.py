@@ -142,6 +142,7 @@ def plot_trends(device_df, gateway_df):
     st.plotly_chart(fig2, use_container_width=True)
 
 def user_dashboard():
+    
     st.title("User Dashboard")
     master_df = st.session_state.master_df
     device_df = st.session_state.device_df
@@ -156,6 +157,44 @@ def user_dashboard():
     disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
     date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
     selected_date = st.selectbox("Select Date", [d.strftime("%d-%m-%Y") for d in date_list])
+    # Add 'Farm Status' filter
+    farm_status_list = ["All"] + sorted(master_df["farm_status"].dropna().unique())
+    selected_status = st.selectbox("Farm Status", farm_status_list)
+    
+    # Apply filter to master_df and disconnected_df
+    if selected_status != "All":
+    master_df = master_df[master_df["farm_status"] == selected_status]
+    disconnected_df = disconnected_df[disconnected_df["farm_name"].isin(master_df["farm_name"])]
+
+    # Preprocess for date selection
+    disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
+    date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
+    
+    # Row 1: Date and Farm
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_date = st.selectbox("Select Date", [d.strftime("%d-%m-%Y") for d in date_list])
+    with col2:
+        selected_farm = st.selectbox("Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()))
+    
+    # Row 2: Cluster and Farm Status
+    col3, col4 = st.columns(2)
+    with col3:
+        selected_cluster = st.selectbox("Select Cluster", ["All"] + sorted(master_df["Cluster"].dropna().unique()))
+    with col4:
+        selected_status = st.selectbox("Farm Status", ["All"] + sorted(master_df["farm_status"].dropna().unique()))
+
+     #Display Farm Name, Cluster, and VCM Name in One Line
+        st.markdown("### Farm Information")
+    col_farm1, col_farm2, col_farm3 = st.columns(3)
+    with col_farm1:
+        st.text(f"Farm Name: {selected_farm}")
+    with col_farm2:
+        st.text(f"Cluster: {selected_cluster}")
+    with col_farm3:
+        if selected_farm != "All":
+            vcm_name = master_df[master_df["farm_name"] == selected_farm]["vcm_name"].values[0]
+            st.text(f"VCM Name: {vcm_name}")
 
     metric = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
     metrics = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
