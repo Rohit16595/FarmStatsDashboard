@@ -164,7 +164,7 @@ def user_dashboard():
 
     #Changed Layout: - 
     if date_list:
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
     with col1:
         selected_date = st.selectbox(
             "Select Date", [d.strftime("%d-%m-%Y") for d in date_list], key="date_select"
