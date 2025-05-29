@@ -9,11 +9,23 @@ def format_date(dt):
     return dt.strftime("%d-%m-%Y")
 
 def preprocess_disconnected_df(disconnected_df, master_df):
-    # Parse entry_date as DD-MM-YYYY and map Cluster
-    disconnected_df["entry_date"] = pd.to_datetime(disconnected_df["entry_date"], format="%d-%m-%Y", errors="coerce")
+    disconnected_df.columns = disconnected_df.columns.str.strip()  # Clean column names
+    if "entry_date" not in disconnected_df.columns:
+        st.error("Column 'entry_date' not found in disconnected device file.")
+        st.stop()
+
+    disconnected_df["entry_date"] = pd.to_datetime(
+        disconnected_df["entry_date"], format="%d-%m-%Y", errors="coerce"
+    )
+    
+    if disconnected_df["entry_date"].isna().all():
+        st.error("All dates in 'entry_date' failed to parse. Expected format: DD-MM-YYYY.")
+        st.stop()
+
     cluster_map = master_df.set_index("farm_name")["Cluster"].to_dict()
     disconnected_df["Cluster"] = disconnected_df["farm_name"].map(cluster_map)
     return disconnected_df
+
 
 def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date):
     disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
