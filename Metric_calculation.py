@@ -216,9 +216,9 @@ else:
             "Farm Status", ["All"] + sorted(master_df["farm_status"].dropna().unique()),
             key="status_select"
         )
-else:
-    st.error("No valid dates found in disconnected device file. Please check data format.")
-    st.stop()
+    else:
+        st.error("No valid dates found in disconnected device file. Please check data format.")
+        st.stop()
 
     # Apply filter to master_df and disconnected_df
     if selected_status != "All":
