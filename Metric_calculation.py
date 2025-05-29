@@ -74,7 +74,15 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
     if selected_farm != "All":
         all_devices_on_date = all_devices_on_date[all_devices_on_date["farm_name"] == selected_farm]
     
-    device_type_counts = all_devices_on_date["Device_type"].value_counts().to_dict()
+    device_type_normalized = (
+    all_devices_on_date["Device_type"]
+    .str.strip()
+    .str.upper()
+    .replace({"A TYPE": "A", "B TYPE": "B", "C TYPE": "C"})
+)
+device_type_counts = device_type_normalized.value_counts().to_dict()
+for t in ["C", "B", "A"]:
+    device_type_counts.setdefault(t, 0)
     # Normalize Device_type values and map to A/B/C
     disconnected_type_normalized = (
         filtered_disconnected["Device_type"]
@@ -174,9 +182,10 @@ def user_dashboard():
     if date_list:
         col1, col2 = st.columns(2)
         with col1:
-            selected_date = st.selectbox(
-                "Select Date", [d.strftime("%d-%m-%Y") for d in date_list], key="date_select"
-            )
+            selected_date = st.date_input(
+    "Select Date", value=max(date_list), min_value=min(date_list), max_value=max(date_list), key="date_select"
+)
+selected_date = selected_date.strftime("%d-%m-%Y")  # Format for downstream use
         with col2:
             selected_farm = st.selectbox(
                 "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
