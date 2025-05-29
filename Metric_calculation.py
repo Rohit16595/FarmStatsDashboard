@@ -36,83 +36,61 @@ def preprocess_disconnected_df(disconnected_df, master_df):
 
 
 def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date):
-    # Preprocess disconnected data
     disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
 
-    # Convert selected date to datetime
+    # Filter disconnected data by selected date
     selected_date_obj = pd.to_datetime(selected_date, format="%d-%m-%Y").date()
-
-    # Filter disconnected devices by date and quality
     filtered_disconnected = disconnected_df[
         (disconnected_df["entry_date"].dt.date == selected_date_obj) &
-        (disconnected_df["data_quality"].str.strip().str.lower() == "disconnected")
+        (disconnected_df["data_quality"] == "Disconnected")
     ]
 
-    # Apply farm/cluster filters
+    # Filter master_df and device_df by cluster and farm
     if selected_cluster != "All":
         master_df = master_df[master_df["Cluster"] == selected_cluster]
-        filtered_disconnected = filtered_disconnected[filtered_disconnected["Cluster"] == selected_cluster]
+        device_df = device_df[device_df["farm_name"].isin(master_df["farm_name"])]
+        disconnected_df = disconnected_df[disconnected_df["farm_name"].isin(master_df["farm_name"])]
 
     if selected_farm != "All":
         master_df = master_df[master_df["farm_name"] == selected_farm]
+        device_df = device_df[device_df["farm_name"] == selected_farm]
+        disconnected_df = disconnected_df[disconnected_df["farm_name"] == selected_farm]
         filtered_disconnected = filtered_disconnected[filtered_disconnected["farm_name"] == selected_farm]
 
-    # Filter devices accordingly
-    filtered_device = device_df.copy()
-    if selected_farm != "All":
-        filtered_device = filtered_device[filtered_device["farm_name"] == selected_farm]
-    elif selected_cluster != "All":
-        farms = master_df["farm_name"].unique()
-        filtered_device = filtered_device[filtered_device["farm_name"].isin(farms)]
-
-    # ✅ Total Devices
-    total_devices = len(filtered_device)
-
-    # ✅ Total Farms
+    # Total devices
+    total_devices = len(device_df)
     total_farms = master_df["farm_name"].nunique()
 
-    # ✅ Disconnected Devices Count (Unique deviceid)
-    disconnected_devices = filtered_disconnected["deviceid"].nunique()
-
-    # ✅ Disconnected Device List
-    disconnected_list = filtered_disconnected[["deviceid", "tag_number"]].dropna().drop_duplicates().values.tolist()
-
-    # ✅ Total Devices by A/B/C type using deviceid (B in ID = B type, C in ID = C type)
-    a_devices = filtered_device[~filtered_device["deviceid"].str.upper().str.contains("B|C")]["deviceid"].nunique()
-    b_devices = filtered_device[filtered_device["deviceid"].str.upper().str.contains("B")]["deviceid"].nunique()
-    c_devices = filtered_device[filtered_device["deviceid"].str.upper().str.contains("C")]["deviceid"].nunique()
-
+    # Total device type counts using logic from deviceid
     device_type_counts = {
-        "A": a_devices,
-        "B": b_devices,
-        "C": c_devices
+        "A": len(device_df[~device_df["deviceid"].str.contains("B|C", na=False)]),
+        "B": len(device_df[device_df["deviceid"].str.contains("B", na=False)]),
+        "C": len(device_df[device_df["deviceid"].str.contains("C", na=False)])
     }
 
-    # ✅ Disconnected A/B/C Devices from Device_type column
-    disconnected_type_normalized = (
+    # Disconnected counts
+    disconnected_devices = filtered_disconnected["deviceid"].nunique()
+    disconnected_list = filtered_disconnected[["deviceid", "tag_number"]].dropna().drop_duplicates().values.tolist()
+
+    # Normalize and count disconnected types
+    disconnected_type_counts = (
         filtered_disconnected["Device_type"]
         .str.strip()
         .str.upper()
         .replace({"A TYPE": "A", "B TYPE": "B", "C TYPE": "C"})
+        .value_counts()
+        .to_dict()
     )
-    disconnected_type_counts = disconnected_type_normalized.value_counts().to_dict()
-
-    # Ensure keys exist
-    for t in ["A", "B", "C"]:
+    for t in ["C", "B", "A"]:
         disconnected_type_counts.setdefault(t, 0)
 
-    # ✅ Gateway Metrics
-    gateway_count = filtered_device["gatewayid"].nunique()
-
-    # Group devices by gateway
-    gateway_devices = filtered_device.groupby("gatewayid")["deviceid"].apply(set).to_dict()
-
-    # Set of disconnected device IDs
+    # Gateway calculations
+    gateway_count = device_df["gatewayid"].nunique()
+    gateway_devices = device_df.groupby("gatewayid")["deviceid"].apply(set).to_dict()
     disconnected_set = set(filtered_disconnected["deviceid"])
 
-    # Gateways where all devices are disconnected
-    gateway_issues = [g for g, devs in gateway_devices.items() if devs and devs.issubset(disconnected_set)]
-    gateway_issue_flag = "Yes" if gateway_issues else "No"
+    gateway_issues = [g for g, devs in gateway_devices.items() if devs.issubset(disconnected_set) and devs]
+    gateway_issue_flag = "Yes" if len(gateway_issues) > 0 else "No"
     gateway_issue_count = len(gateway_issues)
 
     return {
@@ -127,8 +105,6 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
         "disconnected_type_counts": disconnected_type_counts,
         "gateway_issues_list": gateway_issues
     }
-
-
 
 
 def get_trend_data(disconnected_df, device_df, master_df, selected_cluster, selected_farm, selected_device_type, period_days):
@@ -243,7 +219,6 @@ def user_dashboard():
             vcm_name = master_df[master_df["farm_name"] == selected_farm]["vcm_name"].values[0]
             st.text(f"VCM Name: {vcm_name}")
 
-    metric = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
     metrics = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
 
     # Device Statistics Section
