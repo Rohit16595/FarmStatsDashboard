@@ -180,7 +180,7 @@ def user_dashboard():
     date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
 
     if date_list:
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
     with col1:
         selected_date_obj = st.date_input(
             "Select Date", value=max(date_list), min_value=min(date_list), max_value=max(date_list), key="date_select"
