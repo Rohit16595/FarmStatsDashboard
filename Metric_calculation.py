@@ -104,7 +104,7 @@ for t in ["C", "B", "A"]:
     gateway_issue_flag = "Yes" if gateway_issues else "No"
     gateway_issue_count = len(gateway_issues)
 
-    return {
+        return {
         "farm_count": total_farms,
         "total_devices": total_devices,
         "disconnected_devices": disconnected_devices,
