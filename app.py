@@ -22,7 +22,17 @@ def main():
             file_upload_page()
         else:
             if st.session_state.role == "admin":
-                admin_dashboard()
+            # Show sidebar for toggling between dashboards
+            panel = st.sidebar.radio("Admin View", ["User Dashboard", "Admin Panel", "Upload Files"])
+            if panel == "User Dashboard":
+                from Metric_calculation import user_dashboard
+                user_dashboard()
+            elif panel == "Admin Panel":
+                from Metric_calculation import admin_panel
+                admin_panel()
+    else:
+        file_upload_page()  # Assuming this is your upload function
+
             else:
                 user_dashboard()
     else:
