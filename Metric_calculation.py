@@ -14,12 +14,20 @@ def preprocess_disconnected_df(disconnected_df, master_df):
         st.error("Column 'entry_date' not found in disconnected device file.")
         st.stop()
 
-    disconnected_df["entry_date"] = pd.to_datetime(
-        disconnected_df["entry_date"], format="%d-%m-%Y", errors="coerce"
+    # Clean and normalize entry_date
+    disconnected_df["entry_date"] = (
+        disconnected_df["entry_date"]
+        .astype(str)
+        .str.strip()
+        .str.replace(r"\s+", "", regex=True)
     )
     
+    disconnected_df["entry_date"] = pd.to_datetime(
+        disconnected_df["entry_date"], dayfirst=True, errors="coerce"
+    )
+
     if disconnected_df["entry_date"].isna().all():
-        st.error("All dates in 'entry_date' failed to parse. Expected format: DD-MM-YYYY.")
+        st.error("All dates in 'entry_date' failed to parse. Ensure format is DD-MM-YYYY or clean invisible characters.")
         st.stop()
 
     cluster_map = master_df.set_index("farm_name")["Cluster"].to_dict()
