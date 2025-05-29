@@ -73,17 +73,18 @@ def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, s
         all_devices_on_date = all_devices_on_date[all_devices_on_date["Cluster"] == selected_cluster]
     if selected_farm != "All":
         all_devices_on_date = all_devices_on_date[all_devices_on_date["farm_name"] == selected_farm]
-    
+
     device_type_normalized = (
-    all_devices_on_date["Device_type"]
-    .str.strip()
-    .str.upper()
-    .replace({"A TYPE": "A", "B TYPE": "B", "C TYPE": "C"})
-)
-device_type_counts = device_type_normalized.value_counts().to_dict()
-for t in ["C", "B", "A"]:
-    device_type_counts.setdefault(t, 0)
-    # Normalize Device_type values and map to A/B/C
+        all_devices_on_date["Device_type"]
+        .str.strip()
+        .str.upper()
+        .replace({"A TYPE": "A", "B TYPE": "B", "C TYPE": "C"})
+    )
+    device_type_counts = device_type_normalized.value_counts().to_dict()
+    for t in ["C", "B", "A"]:
+        device_type_counts.setdefault(t, 0)
+
+    # Normalize Device_type values and map to A/B/C for disconnected
     disconnected_type_normalized = (
         filtered_disconnected["Device_type"]
         .str.strip()
@@ -92,19 +93,17 @@ for t in ["C", "B", "A"]:
     )
     disconnected_type_counts_series = disconnected_type_normalized.value_counts()
     disconnected_type_counts = disconnected_type_counts_series.to_dict()
-    
-    # Ensure all expected types are present
+
     for t in ["C", "B", "A"]:
         disconnected_type_counts.setdefault(t, 0)
 
-    
     gateway_devices = filtered_device.groupby("gatewayid")["deviceid"].apply(set).to_dict()
     disconnected_set = set(filtered_disconnected["deviceid"])
     gateway_issues = [g for g, devs in gateway_devices.items() if devs.issubset(disconnected_set)]
     gateway_issue_flag = "Yes" if gateway_issues else "No"
     gateway_issue_count = len(gateway_issues)
 
-        return {
+    return {
         "farm_count": total_farms,
         "total_devices": total_devices,
         "disconnected_devices": disconnected_devices,
