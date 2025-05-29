@@ -148,19 +148,47 @@ def user_dashboard():
     device_df = st.session_state.device_df
     disconnected_df = st.session_state.disconnected_df
 
-    cluster_list = ["All"] + sorted(master_df["Cluster"].dropna().unique().tolist())
-    selected_cluster = st.selectbox("Select Cluster", cluster_list, key="cluster_select")
+    # cluster_list = ["All"] + sorted(master_df["Cluster"].dropna().unique().tolist())
+    # #selected_cluster = st.selectbox("Select Cluster", cluster_list, key="cluster_select")
     
-    farm_list = ["All"] + sorted(master_df["farm_name"].dropna().unique().tolist())
-    selected_farm = st.selectbox("Select Farm", farm_list, key="farm_select")
+    # farm_list = ["All"] + sorted(master_df["farm_name"].dropna().unique().tolist())
+    # #selected_farm = st.selectbox("Select Farm", farm_list, key="farm_select")
     
-    disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
-    date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
+    # disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
+    # date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
     
-    selected_date = st.selectbox("Select Date", [d.strftime("%d-%m-%Y") for d in date_list], key="date_select")
-    # Add 'Farm Status' filter
-    farm_status_list = ["All"] + sorted(master_df["farm_status"].dropna().unique())
-    selected_status = st.selectbox("Farm Status", farm_status_list, key="status_select")
+    # #selected_date = st.selectbox("Select Date", [d.strftime("%d-%m-%Y") for d in date_list], key="date_select")
+    # # Add 'Farm Status' filter
+    # farm_status_list = ["All"] + sorted(master_df["farm_status"].dropna().unique())
+    # #selected_status = st.selectbox("Farm Status", farm_status_list, key="status_select")
+
+    #Changed Layout: - 
+    if date_list:
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_date = st.selectbox(
+            "Select Date", [d.strftime("%d-%m-%Y") for d in date_list], key="date_select"
+        )
+    with col2:
+        selected_farm = st.selectbox(
+            "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
+            key="farm_select"
+        )
+
+    col3, col4 = st.columns(2)
+    with col3:
+        selected_cluster = st.selectbox(
+            "Select Cluster", ["All"] + sorted(master_df["Cluster"].dropna().unique()),
+            key="cluster_select"
+        )
+    with col4:
+        selected_status = st.selectbox(
+            "Farm Status", ["All"] + sorted(master_df["farm_status"].dropna().unique()),
+            key="status_select"
+        )
+else:
+    st.error("No valid dates found in disconnected device file. Please check data format.")
+    st.stop()
     
     # Apply filter to master_df and disconnected_df
     if selected_status != "All":
