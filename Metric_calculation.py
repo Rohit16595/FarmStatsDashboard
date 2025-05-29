@@ -160,63 +160,76 @@ def plot_trends(device_df, gateway_df):
     st.plotly_chart(fig2, use_container_width=True)
 
 def user_dashboard():
+    # Farm status filter (BEFORE dropdowns)
+    status_list = ["All"] + sorted(master_df["farm_status"].dropna().unique())
+    selected_status = st.selectbox("Farm Status", status_list, key="status_select")
+    
+    if selected_status != "All":
+        master_df = master_df[master_df["farm_status"] == selected_status]
+    
+    # Sync device_df and disconnected_df
+    allowed_farms = master_df["farm_name"].unique()
+    device_df = device_df[device_df["farm_name"].isin(allowed_farms)]
+    disconnected_df = disconnected_df[disconnected_df["farm_name"].isin(allowed_farms)]
     st.title("User Dashboard")
-
-    # Load session state
     master_df = st.session_state.master_df
     device_df = st.session_state.device_df
     disconnected_df = st.session_state.disconnected_df
 
-    # Preprocess disconnected_df
-    disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
-
-    # Apply Farm Status Filter BEFORE generating dropdowns
-    status_list = ["All"] + sorted(master_df["farm_status"].dropna().unique())
-    selected_status = st.selectbox("Farm Status", status_list, key="status_select")
-
-    if selected_status != "All":
-        master_df = master_df[master_df["farm_status"] == selected_status]
-
-    # Filter device and disconnected based on allowed farms
-    allowed_farms = master_df["farm_name"].unique()
-    device_df = device_df[device_df["farm_name"].isin(allowed_farms)]
-    disconnected_df = disconnected_df[disconnected_df["farm_name"].isin(allowed_farms)]
-
-    # Preprocess for date list again after farm filter
+    # Preprocess for date list
     disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
     date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
 
-    if not date_list:
-        st.error("No valid dates found in disconnected device file. Please check data format.")
-        st.stop()
+    # After filtering master_df and disconnected_df (see issue 2 first!)
+date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique())
 
-    # Filters (Date, Farm, Cluster) – show in two rows
+if date_list:
     col1, col2 = st.columns(2)
     with col1:
         selected_date = st.date_input(
-            "Select Date",
-            value=max(date_list),
-            min_value=min(date_list),
-            max_value=max(date_list),
+            "Select Date", 
+            value=max(date_list), 
+            min_value=min(date_list), 
+            max_value=max(date_list), 
             key="date_select"
         )
         selected_date = selected_date.strftime("%d-%m-%Y")
-    with col2:
-        selected_farm = st.selectbox(
-            "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
-            key="farm_select"
-        )
+else:
+    st.error("No valid dates found in disconnected device file. Please check data format.")
+    st.stop()
 
-    col3, col4 = st.columns(2)
-    with col3:
-        selected_cluster = st.selectbox(
-            "Select Cluster", ["All"] + sorted(master_df["Cluster"].dropna().unique()),
-            key="cluster_select"
-        )
-    with col4:
-        st.markdown("")  # Reserved for future, since Farm Status already selected
+    
+        with col2:
+            selected_farm = st.selectbox(
+                "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
+                key="farm_select"
+            )
+    
+        col3, col4 = st.columns(2)
+        with col3:
+            selected_cluster = st.selectbox(
+                "Select Cluster", ["All"] + sorted(master_df["Cluster"].dropna().unique()),
+                key="cluster_select"
+            )
+        with col4:
+            selected_status = st.selectbox(
+                "Farm Status", ["All"] + sorted(master_df["farm_status"].dropna().unique()),
+                key="status_select"
+            )
+    else:
+        st.error("No valid dates found in disconnected device file. Please check data format.")
+        st.stop()
 
-    # Display Farm Information
+    # Apply filter to master_df and disconnected_df
+    if selected_status != "All":
+        master_df = master_df[master_df["farm_status"] == selected_status]
+    disconnected_df = disconnected_df[disconnected_df["farm_name"].isin(master_df["farm_name"])]
+
+    # Recompute date list post filtering
+    disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
+    date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
+
+    # Display Farm Info
     st.markdown("### Farm Information")
     col_farm1, col_farm2, col_farm3 = st.columns(3)
     with col_farm1:
@@ -225,17 +238,16 @@ def user_dashboard():
         st.text(f"Cluster: {selected_cluster}")
     with col_farm3:
         if selected_farm != "All":
-            vcm = master_df.loc[master_df["farm_name"] == selected_farm, "vcm_name"]
-            vcm_name = vcm.values[0] if not vcm.empty else "N/A"
+            vcm_name = master_df[master_df["farm_name"] == selected_farm]["vcm_name"].values[0]
             st.text(f"VCM Name: {vcm_name}")
 
-    # Metrics calculation
     metrics = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
 
-    # 📊 Device Statistics
+    # Device Statistics Section
     st.subheader("📊 Device Statistics")
     cols = st.columns(4)
     cols[0].metric("Total Devices", metrics["total_devices"], help="Total number of devices")
+
     for i, (dev_type, count) in enumerate(metrics.get("device_type_counts", {}).items(), 1):
         if i < 4:
             cols[i].metric(f"{dev_type} Devices", count, help=f"Total {dev_type} type devices")
@@ -243,22 +255,24 @@ def user_dashboard():
     cols = st.columns(4)
     cols[0].metric("Disconnected Devices", metrics["disconnected_devices"], help="Total disconnected devices")
     desired_order = ["C", "B", "A"]
+    disconnected_types = metrics.get("disconnected_type_counts", {})
     for idx, dev_type in enumerate(desired_order):
-        count = metrics["disconnected_type_counts"].get(dev_type, 0)
-        cols[idx + 1].metric(f"Disconnected {dev_type}", count, help=f"Disconnected {dev_type} type devices")
+        count = disconnected_types.get(dev_type)
+        if count is not None:
+            cols[idx + 1].metric(f"Disconnected {dev_type}", count, help=f"Disconnected {dev_type} type devices")
 
-    # 📊 Gateway Statistics
+    # Gateway Statistics Section
     st.subheader("📊 Gateway Statistics")
     cols = st.columns(3)
-    cols[0].metric("Total Gateways", metrics["gateway_count"])
-    cols[1].metric("Disconnected Gateways", metrics["disconnected_gateway_count"])
+    cols[0].metric("Total Gateways", metrics["gateway_count"], help="Total number of gateways")
+    cols[1].metric("Disconnected Gateways", metrics["disconnected_gateway_count"], help="Gateways with all devices disconnected")
 
     if metrics["gateway_issue"] == "Yes":
-        cols[2].markdown(f'<p style="font-size:20px;color:red">Gateway Issue: Yes</p>', unsafe_allow_html=True)
+        cols[2].markdown(f'<p style="font-size:20px;color:red">Gateway Issue: {metrics["gateway_issue"]}</p>', unsafe_allow_html=True)
     else:
-        cols[2].markdown(f'<p style="font-size:20px;color:black">Gateway Issue: No</p>', unsafe_allow_html=True)
+        cols[2].markdown(f'<p style="font-size:20px;color:black">Gateway Issue: {metrics["gateway_issue"]}</p>', unsafe_allow_html=True)
 
-    # 📋 Disconnected Devices Table
+    # Disconnected Devices List
     st.subheader("📋 Disconnected Devices List")
     if metrics["disconnected_list"]:
         df = pd.DataFrame(metrics["disconnected_list"], columns=["Device ID", "Tag Number"])
@@ -266,19 +280,21 @@ def user_dashboard():
     else:
         st.info("No disconnected devices found.")
 
-    # 📉 Trend Analysis
+    # Trend Analysis Section
     st.subheader("📉 Trend Analysis")
     period_map = {
-        "7 days": 7, "1 month": 30, "3 months": 90, "6 months": 180, "1 year": 365
+        "7 days": 7,
+        "1 month": 30,
+        "3 months": 90,
+        "6 months": 180,
+        "1 year": 365
     }
 
     col1, col2 = st.columns(2)
     with col1:
         selected_period = st.selectbox("Trend Duration", list(period_map.keys()))
     with col2:
-        selected_device_type = st.selectbox(
-            "Device Type", ["All"] + sorted(disconnected_df["Device_type"].dropna().unique().tolist())
-        )
+        selected_device_type = st.selectbox("Device Type", ["All"] + sorted(disconnected_df["Device_type"].dropna().unique().tolist()))
 
     device_trend, gateway_trend = get_trend_data(
         disconnected_df, device_df, master_df,
