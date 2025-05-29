@@ -6,31 +6,25 @@ import chardet
 
 def safe_read_file(uploaded_file):
     import io
-    import os
+    import chardet
 
     file_name = uploaded_file.name.lower()
-
     try:
-        # Read the first 1,000 bytes for encoding detection
         raw_data = uploaded_file.read()
         result = chardet.detect(raw_data)
         encoding = result['encoding'] or 'utf-8'
-
-        # Reset the buffer
         uploaded_file.seek(0)
 
-        # Determine file type by extension
         if file_name.endswith('.csv'):
             return pd.read_csv(uploaded_file, encoding=encoding)
         elif file_name.endswith(('.xls', '.xlsx')):
             return pd.read_excel(uploaded_file)
         else:
-            st.error("Unsupported file format. Please upload .csv, .xls, or .xlsx files.")
+            st.error(f"Unsupported file format: {file_name}. Upload .csv, .xls, or .xlsx only.")
             return None
     except Exception as e:
-        st.error(f"Error reading file {uploaded_file.name}: {e}")
+        st.error(f"Failed to read {file_name}: {e}")
         return None
-
 
 def main():
     # Initialize user database and session state
