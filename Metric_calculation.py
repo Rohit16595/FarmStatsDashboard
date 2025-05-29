@@ -186,11 +186,11 @@ def user_dashboard():
     "Select Date", value=max(date_list), min_value=min(date_list), max_value=max(date_list), key="date_select"
 )
 selected_date = selected_date.strftime("%d-%m-%Y")  # Format for downstream use
-    with col2:
-            selected_farm = st.selectbox(
-                "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
-                key="farm_select"
-            )
+ with col2:
+        selected_farm = st.selectbox(
+            "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
+             key="farm_select"
+        )
 
         col3, col4 = st.columns(2)
         with col3:
