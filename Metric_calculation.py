@@ -199,7 +199,7 @@ else:
     st.stop()
 
     
-        with col2:
+     with col2:
             selected_farm = st.selectbox(
                 "Select Farm", ["All"] + sorted(master_df["farm_name"].dropna().unique()),
                 key="farm_select"
