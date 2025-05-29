@@ -21,7 +21,7 @@ def safe_read_file(uploaded_file):
 
         # Determine file type by extension
         if file_name.endswith('.csv'):
-            return pd.read_csv(uploaded_file, encoding=encoding, errors='replace')
+            return pd.read_csv(uploaded_file, encoding=encoding)
         elif file_name.endswith(('.xls', '.xlsx')):
             return pd.read_excel(uploaded_file)
         else:
