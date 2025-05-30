@@ -225,16 +225,20 @@ def user_dashboard():
     date_list = sorted(disconnected_df["entry_date"].dropna().dt.date.unique(), reverse=True)
 
     # Display Farm Info
-    st.markdown("### Farm Information")
-    col_farm1, col_farm2, col_farm3 = st.columns(3)
-    with col_farm1:
-        st.text(f"Farm Name: {selected_farm}")
-    with col_farm2:
-        st.text(f"Cluster: {selected_cluster}")
-    with col_farm3:
-        if selected_farm != "All":
-            vcm_name = master_df[master_df["farm_name"] == selected_farm]["vcm_name"].values[0]
-            st.text(f"VCM Name: {vcm_name}")
+    st.markdown("### 🏡 Farm Info")
+if selected_farm != "All":
+    vcm_name = master_df[master_df["farm_name"] == selected_farm]["vcm_name"].values[0]
+else:
+    vcm_name = "N/A"
+
+st.markdown(
+    f"<div style='display: flex; gap: 3rem;'>"
+    f"<b>Farm Name:</b> {selected_farm} &nbsp;&nbsp;"
+    f"<b>Cluster:</b> {selected_cluster} &nbsp;&nbsp;"
+    f"<b>VCM Name:</b> {vcm_name}"
+    f"</div>",
+    unsafe_allow_html=True
+)
 
     metrics = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
 
