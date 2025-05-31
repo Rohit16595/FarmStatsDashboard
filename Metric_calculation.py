@@ -256,8 +256,7 @@ st.markdown(
     f"<b>VCM Name:</b> {vcm_name}"
     f"</div>",
     unsafe_allow_html=True
-    )
-
+)
     metrics = calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date)
 
     # Device Statistics Section
