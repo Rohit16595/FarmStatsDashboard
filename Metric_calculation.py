@@ -36,53 +36,71 @@ def preprocess_disconnected_df(disconnected_df, master_df):
 
 
 def calculate_metrics(master_df, device_df, disconnected_df, selected_cluster, selected_farm, selected_date):
+    # Preprocess the disconnected dataframe
     disconnected_df = preprocess_disconnected_df(disconnected_df, master_df)
+    
+    # Normalize device types and data quality for case-insensitive comparison
+    disconnected_df["Device_type_normalized"] = disconnected_df["Device_type"].astype(str).str.strip().str.lower()
+    disconnected_df["data_quality_normalized"] = disconnected_df["data_quality"].astype(str).str.strip().str.lower()
 
-    # Filter disconnected data by selected date
+    # Filter data by selected date
     selected_date_obj = pd.to_datetime(selected_date, format="%d-%m-%Y").date()
-    filtered_disconnected = disconnected_df[
-        (disconnected_df["entry_date"].dt.date == selected_date_obj) &
-        (disconnected_df["data_quality"] == "Disconnected")
+    date_filtered = disconnected_df[
+        (disconnected_df["entry_date"].dt.date == selected_date_obj)
+    ]
+    
+    # Filter for disconnected devices only
+    filtered_disconnected = date_filtered[
+        (date_filtered["data_quality_normalized"] == "disconnected")
     ]
 
-    # Filter master_df and device_df by cluster and farm
+    # Apply cluster filter if specified
     if selected_cluster != "All":
         master_df = master_df[master_df["Cluster"] == selected_cluster]
         device_df = device_df[device_df["farm_name"].isin(master_df["farm_name"])]
         disconnected_df = disconnected_df[disconnected_df["farm_name"].isin(master_df["farm_name"])]
+        date_filtered = date_filtered[date_filtered["farm_name"].isin(master_df["farm_name"])]
+        filtered_disconnected = filtered_disconnected[filtered_disconnected["farm_name"].isin(master_df["farm_name"])]
 
+    # Apply farm filter if specified
     if selected_farm != "All":
         master_df = master_df[master_df["farm_name"] == selected_farm]
         device_df = device_df[device_df["farm_name"] == selected_farm]
         disconnected_df = disconnected_df[disconnected_df["farm_name"] == selected_farm]
+        date_filtered = date_filtered[date_filtered["farm_name"] == selected_farm]
         filtered_disconnected = filtered_disconnected[filtered_disconnected["farm_name"] == selected_farm]
 
-    # Total devices
-    total_devices = len(device_df)
+    # Calculate total farms
     total_farms = master_df["farm_name"].nunique()
 
-    # Total device type counts using logic from deviceid
+    # Calculate total devices (all devices on selected date)
+    total_devices = date_filtered["deviceid"].nunique()
+
+    # Calculate device type counts (all devices on selected date)
+    b_type_count = len(date_filtered[date_filtered["Device_type_normalized"] == "b type"])
+    c_type_count = len(date_filtered[date_filtered["Device_type_normalized"] == "c type"])
+    a_type_count = total_devices - (b_type_count + c_type_count)
+
     device_type_counts = {
-        "A": len(device_df[~device_df["deviceid"].str.contains("B|C", na=False)]),
-        "B": len(device_df[device_df["deviceid"].str.contains("B", na=False)]),
-        "C": len(device_df[device_df["deviceid"].str.contains("C", na=False)])
+        "A": a_type_count,
+        "B": b_type_count,
+        "C": c_type_count
     }
 
-    # Disconnected counts
+    # Calculate disconnected devices
     disconnected_devices = filtered_disconnected["deviceid"].nunique()
     disconnected_list = filtered_disconnected[["deviceid", "tag_number"]].dropna().drop_duplicates().values.tolist()
 
-    # Normalize and count disconnected types
-    disconnected_type_counts = (
-        filtered_disconnected["Device_type"]
-        .str.strip()
-        .str.upper()
-        .replace({"A TYPE": "A", "B TYPE": "B", "C TYPE": "C"})
-        .value_counts()
-        .to_dict()
-    )
-    for t in ["C", "B", "A"]:
-        disconnected_type_counts.setdefault(t, 0)
+    # Calculate disconnected type counts
+    b_type_disconnected = len(filtered_disconnected[filtered_disconnected["Device_type_normalized"] == "b type"])
+    c_type_disconnected = len(filtered_disconnected[filtered_disconnected["Device_type_normalized"] == "c type"])
+    a_type_disconnected = disconnected_devices - (b_type_disconnected + c_type_disconnected)
+
+    disconnected_type_counts = {
+        "A": a_type_disconnected,
+        "B": b_type_disconnected,
+        "C": c_type_disconnected
+    }
 
     # Gateway calculations
     gateway_count = device_df["gatewayid"].nunique()
